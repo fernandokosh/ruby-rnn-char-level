@@ -1,27 +1,32 @@
-require_relative 'matrix'
+require_relative "matrix"
 
-def softmax_rows(X)
-  out = MatrixSimple.new(X.rows, X.cols)
-  X.rows.times do |i|
-    max = X.data[i].max
-    exps = X.data[i].map { |v| Math.exp(v - max) }
-    s = exps.sum
-    out.data[i].each_index { |j| out[i,j] = exps[j] / s }
+def softmax_rows(x)
+  out = MatrixSimple.new(x.rows, x.cols)
+  x.rows.times do |i|
+    row = x.data[i]
+    max_v = row.max
+    exp = row.map { |v| Math.exp(v - max_v) }
+    sum = exp.sum
+    exp.each_with_index { |v, j| out[i, j] = v / sum }
   end
   out
 end
 
-# Y: probs (batch, C), targets: array of ints (batch)
-def cross_entropy_loss_and_grad(Y, targets)
-  batch = Y.rows; C = Y.cols
+def cross_entropy_loss_and_grad(probs, targets)
+  batch = probs.rows
+  classes = probs.cols
   loss = 0.0
-  grad = MatrixSimple.new(batch, C)
+  grad = MatrixSimple.new(batch, classes)
+
   batch.times do |i|
     t = targets[i]
-    p = Y[i,t]
-    loss -= Math.log([p,1e-15].max)
-    C.times { |j| grad[i,j] = Y[i,j] }
-    grad[i,t] -= 1.0
+    p = probs[i, t]
+    p = 1e-15 if p <= 0
+    loss -= Math.log(p)
+
+    classes.times { |j| grad[i, j] = probs[i, j] }
+    grad[i, t] -= 1.0
   end
-  [loss / batch.to_f, grad] # grad is dL/dz where z are logits after softmax
+
+  [loss / batch.to_f, grad]
 end
